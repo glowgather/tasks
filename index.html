@@ -464,21 +464,23 @@ async function loadFromServer() {
   }
 }
 
-// Merge two task lists by id. Returns merged list + tasks that exist
-// only locally (so we can push them up to the sheet).
+// Merge two task lists by id. LOCAL DATA IS NEVER LOST.
+// - tasks only on server → added
+// - tasks only locally → kept AND queued to push up
+// - tasks in both → kept (local edits were already saved locally)
 function mergeTasks(localList, serverList) {
   const byId = {};
-  // start with server tasks
-  serverList.forEach(t => { byId[t.id] = t; });
+  // Start with LOCAL as the base of truth so nothing local disappears
+  localList.forEach(t => { byId[t.id] = t; });
   const localOnly = [];
+  // Add any server tasks we don't have locally
+  serverList.forEach(t => {
+    if (!byId[t.id]) byId[t.id] = t;
+  });
+  // Figure out which local tasks aren't on the server yet → push them
+  const serverIds = new Set(serverList.map(t => String(t.id)));
   localList.forEach(t => {
-    if (!byId[t.id]) {
-      // exists only locally → keep it and remember to push it up
-      byId[t.id] = t;
-      localOnly.push(t);
-    }
-    // if it exists in both, we keep the server copy (already in byId).
-    // Edits made on this device were already pushed at save time.
+    if (!serverIds.has(String(t.id))) localOnly.push(t);
   });
   return { list: Object.values(byId), localOnly };
 }
@@ -561,11 +563,14 @@ const SEED_TOPICS = [
 function loadLocal() {
   try {
     const d = localStorage.getItem(LOCAL_KEY);
-    if (d === null) {
-      // first run ever → seed with topic placeholders
+    if (d === null) return JSON.parse(JSON.stringify(SEED_TOPICS));
+    const parsed = JSON.parse(d);
+    // also seed if storage somehow ended up empty (e.g. earlier data loss)
+    if (Array.isArray(parsed) && parsed.length === 0 && !localStorage.getItem('gg_seeded')) {
+      localStorage.setItem('gg_seeded', '1');
       return JSON.parse(JSON.stringify(SEED_TOPICS));
     }
-    return JSON.parse(d);
+    return parsed;
   } catch { return []; }
 }
 function saveLocal() {
@@ -834,8 +839,8 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !document.getElementById('modal-wrap').classList.contains('open')) { e.preventDefault(); openModal(); }
 });
 
-// Auto-sync every 60s when connected
-setInterval(() => { if (SCRIPT_URL && !syncing) loadFromServer(); }, 60000);
+// Auto-sync DISABLED — sync only happens when you press the Sync button,
+// so background syncing can never surprise-overwrite your local edits.
 </script>
 </body>
 </html>
