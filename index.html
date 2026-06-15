@@ -345,7 +345,9 @@ input.err{border-color:var(--red)}
 // ── CONFIG ────────────────────────────────────────────
 const STORAGE_KEY = 'gg_script_url';
 const LOCAL_KEY   = 'gg_tasks_v3';
-let SCRIPT_URL    = localStorage.getItem(STORAGE_KEY) || '';
+// URL is embedded so every device auto-connects with no setup.
+const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbwLL2GSdSVl-1Iucjs2ctOKITzUdCyxYEwW2Rbp9jwqWcLRxFhKUiB7_zAKbhoFy-BHfw/exec';
+let SCRIPT_URL    = localStorage.getItem(STORAGE_KEY) || DEFAULT_URL;
 
 const CATS = {
   product:   {label:'Product',       emoji:'🟣', color:'var(--purple)', tagBg:'var(--purple-light)', tagColor:'var(--purple-text)'},
